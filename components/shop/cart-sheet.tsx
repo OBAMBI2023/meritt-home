@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ProductImage } from '@/components/shop/product-image';
 import { MAX_QUANTITY, type DetailedCartLine } from '@/lib/cart';
-import { DELIVERY } from '@/lib/site';
 import { formatPrice, getCategory, type Category } from '@/lib/products';
 
 interface CartSheetProps {
@@ -13,7 +12,7 @@ interface CartSheetProps {
   onOpenChange: (open: boolean) => void;
   lines: DetailedCartLine[];
   categories: Category[];
-  totals: { subtotal: number; delivery: number; total: number };
+  totals: { subtotal: number };
   count: number;
   onUpdate: (productId: string, quantity: number) => void;
   onRemove: (productId: string) => void;
@@ -82,7 +81,7 @@ export function CartSheet({ open, onOpenChange, lines, categories, totals, count
                       <button
                         type="button"
                         onClick={() => onRemove(product.id)}
-                        className="flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-destructive"
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-destructive"
                         aria-label={`Retirer ${product.name} du panier`}
                       >
                         <Trash2 className="h-4 w-4" aria-hidden />
@@ -99,15 +98,10 @@ export function CartSheet({ open, onOpenChange, lines, categories, totals, count
                   <dt className="text-muted-foreground">Sous-total</dt>
                   <dd className="font-medium">{formatPrice(totals.subtotal)}</dd>
                 </div>
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Livraison à {DELIVERY.zone} (indicatif)</dt>
-                  <dd className="font-medium">{formatPrice(totals.delivery)}</dd>
-                </div>
-                <div className="flex justify-between border-t pt-3 text-base">
-                  <dt className="font-semibold">Total</dt>
-                  <dd className="font-semibold text-primary">{formatPrice(totals.total)}</dd>
-                </div>
               </dl>
+              <p className="text-xs text-muted-foreground">
+                Les frais de livraison dépendent de la commune et sont indiqués à l’étape suivante (retrait sur place : aucun frais).
+              </p>
               <Button type="button" size="lg" className="h-12 w-full" onClick={onCheckout}>
                 Passer la commande
                 <ArrowRight className="ml-2 h-4 w-4" aria-hidden />

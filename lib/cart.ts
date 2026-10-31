@@ -1,4 +1,3 @@
-import { DELIVERY } from '@/lib/site';
 import type { Product } from '@/lib/products';
 
 /** Limite d'interface par article (ce n'est pas un stock). */
@@ -53,10 +52,10 @@ export function detailLines(lines: CartLine[], products: Product[]): DetailedCar
 export const countItems = (details: DetailedCartLine[]) =>
   details.reduce((sum, line) => sum + line.quantity, 0);
 
+/** Sous-total indicatif du panier. Les frais de livraison dépendent de la commune et sont fixés par la base à la commande. */
 export function computeTotals(details: DetailedCartLine[]) {
   const subtotal = details.reduce((sum, line) => sum + line.lineTotal, 0);
-  const delivery = subtotal > 0 ? DELIVERY.fee : 0;
-  return { subtotal, delivery, total: subtotal + delivery };
+  return { subtotal };
 }
 
 /**
