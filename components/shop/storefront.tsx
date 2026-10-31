@@ -2,17 +2,20 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Toaster, toast } from 'sonner';
-import { AdminPreview } from '@/components/admin/admin-preview';
 import { BottomNav, type BottomNavItem } from '@/components/shop/bottom-nav';
 import { CartSheet } from '@/components/shop/cart-sheet';
 import { CatalogueSection, type CatalogueStatus } from '@/components/shop/catalogue-section';
 import { CategoriesSection } from '@/components/shop/categories-section';
+import { ChristmasBanner } from '@/components/shop/christmas-banner';
+import { CollectionsSection } from '@/components/shop/collections-section';
+import { PromoBanner } from '@/components/shop/promo-banner';
 import { CheckoutDialog } from '@/components/shop/checkout-dialog';
 import { HeroSection } from '@/components/shop/hero-section';
 import { ProductDialog } from '@/components/shop/product-dialog';
 import { SiteFooter } from '@/components/shop/site-footer';
 import { SiteHeader } from '@/components/shop/site-header';
 import { WhatsAppButton } from '@/components/shop/whatsapp-button';
+import { useBannersState } from '@/hooks/use-banners';
 import { useCart } from '@/hooks/use-cart';
 import { useCatalogue } from '@/hooks/use-catalogue';
 import { useFavorites } from '@/hooks/use-favorites';
@@ -45,6 +48,7 @@ export function Storefront() {
     [allCategories, products]
   );
 
+  const { banners, loaded: bannersLoaded } = useBannersState();
   const cart = useCart(products);
   const favorites = useFavorites();
 
@@ -55,7 +59,6 @@ export function Storefront() {
 
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [adminOpen, setAdminOpen] = useState(false);
   const [openedProductId, setOpenedProductId] = useState<string | null>(null);
 
   // Une fois un catalogue non vide chargé, on retire du panier et des favoris les produits qui n'existent plus.
@@ -143,7 +146,8 @@ export function Storefront() {
       />
 
       <main className="pb-16 md:pb-0">
-        <HeroSection />
+        <HeroSection hero={banners.hero} />
+        <ChristmasBanner christmas={bannersLoaded ? banners.christmas : null} />
         <CategoriesSection
           loading={catalogueState.status === 'loading'}
           categories={categories}
@@ -167,10 +171,12 @@ export function Storefront() {
           onAdd={addToCart}
           onOpen={setOpenedProductId}
         />
+        <PromoBanner promo={banners.promo} />
+        <CollectionsSection images={banners.collections} />
       </main>
 
       <div className="pb-16 md:pb-0">
-        <SiteFooter onOpenAdminPreview={() => setAdminOpen(true)} />
+        <SiteFooter />
       </div>
 
       <BottomNav
@@ -202,16 +208,11 @@ export function Storefront() {
         onCheckout={startCheckout}
       />
       <CheckoutDialog
-        open={checkoutOpen && cart.details.length > 0}
+        open={checkoutOpen}
         onOpenChange={setCheckoutOpen}
         lines={cart.details}
         totals={cart.totals}
         onClearCart={cart.clear}
-      />
-      <AdminPreview
-        open={adminOpen}
-        onOpenChange={setAdminOpen}
-        catalogue={{ state: catalogueState, products, categories: allCategories }}
       />
 
       <Toaster position="top-center" richColors closeButton />

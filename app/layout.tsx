@@ -1,10 +1,9 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import { Inter, Playfair_Display } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import { SITE } from '@/lib/site';
 
 const sans = Inter({ subsets: ['latin'], display: 'swap', variable: '--font-sans' });
-const display = Playfair_Display({ subsets: ['latin'], display: 'swap', variable: '--font-display' });
 
 const title = `${SITE.name} — ${SITE.tagline}`;
 
@@ -35,7 +34,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr" className={`${sans.variable} ${display.variable}`}>
+    <html lang="fr" className={sans.variable}>
       <body className="font-sans">{children}</body>
     </html>
   );

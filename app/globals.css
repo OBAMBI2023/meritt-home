@@ -8,29 +8,29 @@
  */
 @layer base {
   :root {
-    --background: 40 33% 98%;
+    --background: 0 0% 100%;
     --foreground: 160 14% 9%;
     --card: 0 0% 100%;
     --card-foreground: 160 14% 9%;
     --popover: 0 0% 100%;
     --popover-foreground: 160 14% 9%;
     --primary: 168 56% 20%;
-    --primary-foreground: 40 33% 98%;
-    --secondary: 33 35% 89%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 33 35% 87%;
     --secondary-foreground: 168 56% 16%;
-    --muted: 40 20% 94%;
-    --muted-foreground: 160 7% 36%;
-    --accent: 150 22% 93%;
+    --muted: 80 8% 96%;
+    --muted-foreground: 150 5% 43%;
+    --accent: 154 26% 92%;
     --accent-foreground: 168 56% 16%;
     --destructive: 0 65% 42%;
     --destructive-foreground: 0 0% 100%;
-    --border: 38 16% 87%;
+    --border: 150 10% 92%;
     --input: 38 16% 80%;
     --ring: 168 56% 28%;
-    --wood: 28 38% 46%;
+    --wood: 28 38% 55%;
     --success: 152 55% 26%;
     --warning: 32 85% 34%;
-    --radius: 0.75rem;
+    --radius: 0.8125rem;
 
     --chart-1: 168 56% 20%;
     --chart-2: 28 38% 46%;
@@ -54,7 +54,7 @@
   h1,
   h2,
   h3 {
-    @apply font-display tracking-tight;
+    @apply font-display font-bold tracking-[-0.03em];
   }
 
   /* Le focus clavier doit toujours être visible. */
@@ -86,10 +86,29 @@
   }
 
   .section-eyebrow {
-    @apply text-xs font-semibold uppercase tracking-[0.16em] text-wood;
+    @apply text-xs font-bold uppercase tracking-[0.16em] text-ring;
   }
 
   .section-title {
-    @apply text-3xl font-semibold leading-tight sm:text-4xl;
+    @apply text-3xl font-bold leading-tight sm:text-[2rem];
   }
+}
+
+/* Campagne de Noël : animations légères (transform/opacity uniquement), actives seulement sans préférence « réduire les animations ». */
+@keyframes xmas-twinkle {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+@keyframes xmas-fall {
+  from { transform: translate3d(0, -10%, 0); }
+  to { transform: translate3d(14px, 480px, 0); }
+}
+@keyframes xmas-rise {
+  from { opacity: 0; transform: translate3d(0, 14px, 0); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .xmas-twinkle { animation: xmas-twinkle 3.2s ease-in-out infinite; }
+  .xmas-flake { animation: xmas-fall linear infinite; will-change: transform; }
+  .xmas-rise { animation: xmas-rise 0.9s ease-out both; }
 }
