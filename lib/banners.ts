@@ -63,8 +63,9 @@ export const DEFAULT_BANNERS: Banners = {
     subtitle: "Offrez à votre intérieur l'élégance qu'il mérite.",
     button: 'DÉCOUVRIR LA COLLECTION',
     href: '#catalogue',
-    startsAt: '',
-    endsAt: '',
+    // Période de diffusion : du 1er au 31 décembre 2026, bornes incluses (calendrier local du visiteur).
+    startsAt: '2026-12-01',
+    endsAt: '2026-12-31',
   },
 };
 
@@ -101,6 +102,13 @@ const isDate = (value: string) => {
   const [year, month, day] = value.split('-').map(Number);
   const date = new Date(Date.UTC(year, month - 1, day));
   return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+};
+
+/** Lecture d'une date facultative : absente ou invalide → valeur par défaut ; chaîne vide → aucune borne. */
+const optionalDate = (value: unknown, fallback: string) => {
+  if (typeof value !== 'string') return fallback;
+  const v = value.trim();
+  return v === '' ? '' : isDate(v) ? v : fallback;
 };
 
 export type ChristmasStatus = { active: boolean; label: string };
@@ -253,20 +261,31 @@ export function mergeBanners(raw: unknown): Banners {
       subtitle: text(xmas.subtitle, d.christmas.subtitle),
       button: text(xmas.button, d.christmas.button, 40),
       href: typeof xmas.href === 'string' && isUsableLink(xmas.href.trim()) ? xmas.href.trim() : d.christmas.href,
-      startsAt: typeof xmas.startsAt === 'string' && isDate(xmas.startsAt) ? xmas.startsAt : '',
-      endsAt: typeof xmas.endsAt === 'string' && isDate(xmas.endsAt) ? xmas.endsAt : '',
+      // Date absente ou invalide = période par défaut (1er–31/12/2026) ; vide enregistrée volontairement = pas de borne.
+      startsAt: optionalDate(xmas.startsAt, d.christmas.startsAt),
+      endsAt: optionalDate(xmas.endsAt, d.christmas.endsAt),
     },
   };
 }
 
-/** Lecture publique : ne lève jamais d'erreur, retombe sur les valeurs par défaut. */
-export async function fetchBanners(): Promise<Banners> {
+export interface BannersLoad {
+  banners: Banners;
+  /**
+   * true uniquement si la base a répondu avec la ligne de réglages. Sinon (base inaccessible, erreur, table absente,
+   * ligne manquante), `banners` ne contient que des valeurs locales de secours : elles servent à l'affichage des bannières
+   * ordinaires, mais ne doivent JAMAIS suffire à rendre visible la campagne de Noël.
+   */
+  confirmed: boolean;
+}
+
+/** Lecture publique : ne lève jamais d'erreur ; sans réponse valide de la base, `confirmed` vaut false. */
+export async function fetchBanners(): Promise<BannersLoad> {
   try {
     const { data, error } = await getSupabase().from('site_banners').select('data').limit(1);
-    if (error || !Array.isArray(data) || !isRecord(data[0])) return DEFAULT_BANNERS;
-    return mergeBanners(data[0].data);
+    if (error || !Array.isArray(data) || !isRecord(data[0])) return { banners: DEFAULT_BANNERS, confirmed: false };
+    return { banners: mergeBanners(data[0].data), confirmed: true };
   } catch {
-    return DEFAULT_BANNERS;
+    return { banners: DEFAULT_BANNERS, confirmed: false };
   }
 }
 

@@ -83,7 +83,7 @@ function Scene() {
   );
 }
 
-/** `christmas` vaut null tant que les réglages ne sont pas chargés : rien n'est affiché (pas de scintillement). */
+/** christmas vaut null tant que la base n'a pas confirmé les réglages (chargement, base inaccessible, table absente) : rien n'est affiché. */
 export function ChristmasBanner({ christmas }: { christmas: Banners['christmas'] | null }) {
   // La date du jour est celle du visiteur (AAAA-MM-JJ) : on ne la lit qu'après l'hydratation,
   // sinon la date du serveur (UTC) pourrait différer de celle du navigateur et provoquer une erreur d'hydratation.

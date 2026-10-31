@@ -48,7 +48,7 @@ export function Storefront() {
     [allCategories, products]
   );
 
-  const { banners, loaded: bannersLoaded } = useBannersState();
+  const { banners, confirmed: bannersConfirmed } = useBannersState();
   const cart = useCart(products);
   const favorites = useFavorites();
 
@@ -147,7 +147,7 @@ export function Storefront() {
 
       <main className="pb-16 md:pb-0">
         <HeroSection hero={banners.hero} />
-        <ChristmasBanner christmas={bannersLoaded ? banners.christmas : null} />
+        <ChristmasBanner christmas={bannersConfirmed ? banners.christmas : null} />
         <CategoriesSection
           loading={catalogueState.status === 'loading'}
           categories={categories}

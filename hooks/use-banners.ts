@@ -3,17 +3,24 @@
 import { useEffect, useState } from 'react';
 import { DEFAULT_BANNERS, fetchBanners, type Banners } from '@/lib/banners';
 
+interface BannersState {
+  banners: Banners;
+  /** La lecture est terminée (réussie ou non). */
+  loaded: boolean;
+  /** La base a confirmé les réglages. Faux = valeurs locales de secours uniquement (campagne de Noël masquée). */
+  confirmed: boolean;
+}
+
 /**
- * Bannières de la boutique : valeurs par défaut immédiatement, puis celles de la base une fois chargées.
- * `loaded` passe à true quand la lecture est terminée (réussie ou retombée sur les valeurs par défaut) :
- * la campagne de Noël attend ce signal pour ne pas apparaître une fraction de seconde alors qu'elle est désactivée ou hors période.
+ * Bannières de la boutique : valeurs par défaut immédiatement (pour les bannières ordinaires), puis celles de la base.
+ * La campagne de Noël, elle, n'est jamais affichée tant que `confirmed` n'est pas vrai.
  */
-export function useBannersState(): { banners: Banners; loaded: boolean } {
-  const [state, setState] = useState<{ banners: Banners; loaded: boolean }>({ banners: DEFAULT_BANNERS, loaded: false });
+export function useBannersState(): BannersState {
+  const [state, setState] = useState<BannersState>({ banners: DEFAULT_BANNERS, loaded: false, confirmed: false });
   useEffect(() => {
     let cancelled = false;
-    void fetchBanners().then((banners) => {
-      if (!cancelled) setState({ banners, loaded: true });
+    void fetchBanners().then(({ banners, confirmed }) => {
+      if (!cancelled) setState({ banners, loaded: true, confirmed });
     });
     return () => {
       cancelled = true;
