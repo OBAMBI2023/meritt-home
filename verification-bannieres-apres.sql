@@ -1,5 +1,7 @@
 -- MERITT HOME — Bannières : contrôles APRÈS migration (LECTURE SEULE, aucune écriture)
 -- Projet Supabase : jvmvsaiduralhezrjeyg
+-- ATTENTION : cette version échoue avec « ERROR 42883: operator does not exist: information_schema.character_data[] = text[] »
+-- (contrôles 6 et 7). Utiliser verification-bannieres-apres-corrige.sql, qui conserve les mêmes 8 contrôles.
 -- Résultat attendu : toutes les lignes ok = true.
 select 'table site_banners existe' as controle,
        exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'site_banners') as ok

@@ -2,7 +2,10 @@
 -- MERITT HOME — Module de facturation : migration additive (PROPOSITION)
 -- Projet Supabase de production : jvmvsaiduralhezrjeyg
 --
--- STATUT : NON APPLIQUÉE, NON EXÉCUTÉE sur Supabase. À relire puis à appliquer manuellement.
+-- STATUT : NON APPLIQUÉE en production (constaté le 31/10/2026 dans le tableau de bord : aucune table de facturation,
+-- aucune fonction, aucun trigger ni aucune politique de ce module ; prérequis commandes et encaissements en place).
+-- À relire puis à appliquer manuellement : PARTIE 0 (contrôles), PARTIE 1, puis PARTIE 2. Tant qu'elle n'est pas
+-- appliquée, l'administration signale que le module de facturation n'est pas installé.
 -- Prérequis (dans cet ordre) : migration-commandes.sql (PARTIE 1) puis migration-encaissements.sql (PARTIE 1).
 -- Validée sur PostgreSQL en mémoire (PGlite) avec ces deux migrations.
 --
@@ -473,6 +476,8 @@ union all select 'aucune facture (rien d''inventé)', (select count(*) from publ
 -- Le bloc se termine volontairement par l'erreur « RESULTATS DES TESTS » : PostgreSQL annule alors toute la transaction
 -- (commandes, factures, paiements, réglages de test). Le rapport est dans le message d'erreur : chaque ligne doit finir par OK.
 -- Seule trace durable : les séquences de références de commandes et de reçus avancent de quelques numéros.
+-- NE JAMAIS retirer, déplacer ni conditionner le « raise exception » final : c'est lui qui annule les écritures de test
+-- (dont la modification temporaire de company_settings). À n'exécuter qu'après la PARTIE 1 de ce fichier.
 -- Prérequis : un produit publié dans une catégorie active, 1 administrateur.
 -- =====================================================================
 do $$

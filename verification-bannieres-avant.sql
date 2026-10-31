@@ -1,5 +1,7 @@
 -- MERITT HOME — Bannières : contrôles AVANT migration (LECTURE SEULE, aucune écriture)
 -- Projet Supabase : jvmvsaiduralhezrjeyg
+-- Utile uniquement AVANT la migration. Depuis son application en production, le dernier contrôle (table absente) vaut
+-- logiquement false : ce n'est plus une anomalie.
 -- Résultat attendu pour appliquer migration-bannieres.sql : toutes les lignes ok = true.
 select 'is_admin() existe' as controle,
        exists (select 1 from pg_proc where proname = 'is_admin' and pronamespace = 'public'::regnamespace) as ok

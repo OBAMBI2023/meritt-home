@@ -1,10 +1,11 @@
 -- =====================================================================
--- MERITT HOME — Bannières personnalisables : migration additive (PROPOSITION)
+-- MERITT HOME — Bannières personnalisables : migration additive (APPLIQUÉE — voir STATUT)
 -- Projet Supabase : jvmvsaiduralhezrjeyg
 --
--- STATUT : NON APPLIQUÉE, NON EXÉCUTÉE. À relire puis à appliquer manuellement
--- dans l'éditeur SQL. Tant qu'elle n'est pas appliquée, la boutique affiche les
--- bannières par défaut (lib/banners.ts) et /admin/bannieres signale que la table manque.
+-- STATUT : APPLIQUÉE en production (31/10/2026) : les 8 contrôles de verification-bannieres-apres-corrige.sql
+-- renvoient ok = true. NE PAS rejouer : « create table » échouerait (42P07, relation déjà existante) et la
+-- transaction serait annulée sans rien écrire. Le texte ci-dessous est conservé tel qu'il a été audité.
+-- Avant application, la boutique affichait les bannières par défaut (lib/banners.ts).
 --
 -- ORDRE D'EXÉCUTION (chaque fichier séparément dans l'éditeur SQL) :
 --   1. verification-bannieres-avant.sql   (lecture seule)  -> toutes les lignes ok = true

@@ -1,8 +1,11 @@
 -- =====================================================================
--- MERITT HOME — Module d'encaissement : migration additive (PROPOSITION)
+-- MERITT HOME — Module d'encaissement : migration additive (APPLIQUÉE — voir STATUT)
 -- Projet Supabase de production : jvmvsaiduralhezrjeyg
 --
--- STATUT : NON APPLIQUÉE, NON EXÉCUTÉE sur Supabase. À relire puis à appliquer manuellement.
+-- STATUT : APPLIQUÉE en production (constaté le 31/10/2026 dans le tableau de bord : tables payment_methods,
+-- order_payments et order_payment_events, vue v_order_payments, 7 fonctions, 4 triggers et 3 politiques présents).
+-- NE PAS rejouer la PARTIE 1 : elle n'est pas idempotente et échouerait. Les commentaires ci-dessous décrivent l'état
+-- d'avant application et sont conservés tels quels.
 -- Prérequis : migration-commandes.sql (PARTIE 1) déjà appliquée (fonctions is_admin, tables orders/order_items,
 --             colonne orders.fulfillment_method...). Validée sur PostgreSQL en mémoire (PGlite).
 --
@@ -481,6 +484,7 @@ union all select 'aucun paiement (rien d''inventé)',
 -- Le bloc se termine volontairement par l'erreur « RESULTATS DES TESTS » : PostgreSQL annule alors toute la transaction
 -- (commandes, paiements, stock et tarif de test compris). Le rapport est dans le message d'erreur : chaque ligne doit finir par OK.
 -- Seule trace durable : les séquences de références (commandes et reçus) avancent de quelques numéros.
+-- NE JAMAIS retirer, déplacer ni conditionner le « raise exception » final : c'est lui qui annule les écritures de test.
 -- Prérequis : un produit publié dans une catégorie active, 1 administrateur.
 -- =====================================================================
 do $$

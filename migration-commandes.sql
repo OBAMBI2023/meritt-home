@@ -1,8 +1,12 @@
 -- =====================================================================
--- MERITT HOME — Système de commande réel : migration additive (PROPOSITION)
+-- MERITT HOME — Système de commande réel : migration additive (APPLIQUÉE — voir STATUT)
 -- Projet Supabase : jvmvsaiduralhezrjeyg
 --
--- STATUT : NON APPLIQUÉE, NON EXÉCUTÉE. À relire puis à appliquer manuellement.
+-- STATUT : APPLIQUÉE en production (constaté le 31/10/2026 dans le tableau de bord : fonctions create_order,
+-- get_checkout_config, order_summary et admin_set_order_status ; tables order_settings et delivery_fees ;
+-- orders à 21 colonnes et order_items à 9 colonnes, conformes à la PARTIE 1 ; politiques clients supprimées).
+-- NE PAS rejouer la PARTIE 1 : elle n'est pas idempotente et échouerait. Les commentaires ci-dessous décrivent l'état
+-- d'avant application (audit du 29/10/2026) et sont conservés tels quels.
 -- Généré à partir de l'audit réel du schéma (29/10/2026) : orders=0, order_items=0,
 -- products=1, product_inventory=0, categories=1, admin_users=1.
 --
@@ -475,6 +479,13 @@ union all select 'statuts: ready_for_pickup accepté', (select pg_get_constraint
 -- toute la transaction (tarif, stock et commandes de test compris). L'éditeur SQL n'affiche pas les
 -- NOTICE : le rapport est donc placé dans le message d'erreur. Chaque ligne doit finir par OK.
 -- Si l'erreur est autre que "RESULTATS DES TESTS", copiez-la-moi : rien n'est conservé.
+-- NE JAMAIS retirer, déplacer ni conditionner le « raise exception » final : c'est lui qui annule les écritures de test
+-- (commandes, tarif et stock de test, y compris sur le vrai produit publié). Seule trace durable : la séquence des
+-- références de commande (order_reference_seq) avance de quelques numéros, les séquences n'étant pas transactionnelles.
+-- Ce bloc n'écrit que des lignes de test, toutes annulées : tarif « Cocody », stock du produit publié et commandes créées
+-- par create_order. Il ne modifie ni ne supprime les vraies commandes. Depuis que delivery_fees contient des tarifs réels
+-- (clé primaire = commune), l'insertion du tarif « Cocody » échoue (23505) si cette commune existe déjà : le bloc s'arrête
+-- alors sans rien conserver ; il faut changer la commune de test avant de le rejouer en production.
 -- Prérequis : un produit publié dans une catégorie active (c'est le cas : 1 produit), 1 administrateur.
 -- =====================================================================
 do $$
