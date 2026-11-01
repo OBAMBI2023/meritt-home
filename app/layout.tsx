@@ -1,26 +1,30 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import { SITE } from '@/lib/site';
 
-const inter = Inter({ subsets: ['latin'], display: 'swap' });
+const sans = Inter({ subsets: ['latin'], display: 'swap', variable: '--font-sans' });
+
+const title = `${SITE.name} — ${SITE.tagline}`;
 
 export const metadata: Metadata = {
-  title: 'Meritt Home — L’art de vivre autrement',
-  description: 'Mobilier, décoration et pièces uniques pour créer un intérieur qui vous ressemble.',
+  // URL publique du site (à définir au déploiement) ; repli local pour le développement.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
+  title,
+  description: SITE.description,
   openGraph: {
-    images: [
-      {
-        url: 'https://bolt.new/static/og_default.png',
-      },
-    ],
+    type: 'website',
+    locale: 'fr_FR',
+    siteName: SITE.name,
+    title,
+    description: SITE.description,
+    images: [{ url: SITE.heroImage, alt: `Salon aménagé avec du mobilier ${SITE.name}` }],
   },
   twitter: {
     card: 'summary_large_image',
-    images: [
-      {
-        url: 'https://bolt.new/static/og_default.png',
-      },
-    ],
+    title,
+    description: SITE.description,
+    images: [SITE.heroImage],
   },
 };
 
@@ -30,8 +34,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr">
-      <body className={inter.className}>{children}</body>
+    <html lang="fr" className={sans.variable}>
+      <body className="font-sans">{children}</body>
     </html>
   );
 }
