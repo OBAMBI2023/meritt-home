@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Search } from 'lucide-react';
@@ -8,7 +8,7 @@ import { Toaster, toast } from 'sonner';
 import { EmptyState, ErrorBlock, LoadingBlock, SectionHeader } from '@/components/admin/admin-ui';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -105,6 +105,10 @@ function OrderInvoicePanel({ order }: { order: AdminOrder }) {
   const [state, setState] = useState<{ status: 'loading' } | { status: 'missing' } | { status: 'error' } | { status: 'ready'; rows: InvoiceRow[] }>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  // Garde synchrone contre les doubles soumissions (l'état React n'est à jour qu'au rendu suivant).
+  const inFlight = useRef(false);
   useEffect(() => {
     let cancelled = false;
     setState({ status: 'loading' });
@@ -116,16 +120,28 @@ function OrderInvoicePanel({ order }: { order: AdminOrder }) {
     };
   }, [order.id, attempt]);
 
+  /** Ouvre la confirmation : aucune création n'a lieu avant le clic sur « Confirmer la création ». */
+  function ask() {
+    setCreateError(null);
+    setConfirming(true);
+  }
+
   async function create() {
-    if (busy) return;
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
+    setCreateError(null);
     const result = await createInvoiceDraft(order.id);
+    inFlight.current = false;
     setBusy(false);
     if (!result.ok) {
-      toast.error(result.message);
+      // La confirmation reste ouverte : le message est lisible et « Confirmer la création » permet de réessayer
+      // (la base refuse les doublons, un nouvel essai est sans risque).
+      setCreateError(result.message);
       setAttempt((n) => n + 1);
       return;
     }
+    setConfirming(false);
     router.push(`/admin/factures/voir?id=${result.data.id}`);
   }
 
@@ -150,12 +166,40 @@ function OrderInvoicePanel({ order }: { order: AdminOrder }) {
               {state.rows.length > 0 ? 'Les factures précédentes de cette commande sont annulées.' : 'Aucune facture pour cette commande.'}
             </p>
             {order.status !== 'cancelled' && (
-              <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void create()}>
-                {busy ? 'Création…' : 'Créer la facture (brouillon)'}
+              <Button type="button" size="sm" variant="outline" disabled={busy} onClick={ask}>
+                Créer la facture (brouillon)
               </Button>
             )}
           </div>
         ))}
+
+      <Dialog open={confirming} onOpenChange={(next) => !next && !busy && setConfirming(false)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Créer un brouillon de facture ?</DialogTitle>
+            <DialogDescription>
+              Commande <strong>{order.reference}</strong> · {order.customerName} · {formatPrice(order.total)}
+            </DialogDescription>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Un <strong>brouillon</strong> sera créé à partir de cette commande : client, articles, prix et frais sont lus en base. Ce n’est{' '}
+            <strong>pas encore une facture émise</strong> : aucun numéro n’est attribué et vous pourrez la modifier ou l’abandonner avant l’émission.
+          </p>
+          {createError && (
+            <p role="alert" className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+              {createError}
+            </p>
+          )}
+          <DialogFooter className="gap-2 sm:space-x-0">
+            <Button type="button" variant="ghost" disabled={busy} onClick={() => setConfirming(false)}>
+              Annuler
+            </Button>
+            <Button type="button" disabled={busy} onClick={() => void create()}>
+              {busy ? 'Création…' : createError ? 'Réessayer' : 'Confirmer la création'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
