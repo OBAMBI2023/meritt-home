@@ -13,7 +13,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAdminQuery } from '@/hooks/use-admin-query';
-import { nextStatuses, setOrderStatus } from '@/lib/admin/orders';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { cancellationMessage, nextStatuses, setOrderStatus } from '@/lib/admin/orders';
 import { STATUS_LABELS as PAYMENT_STATUS_LABELS, fetchOrderPayments, isModuleMissing, type PaymentRow } from '@/lib/admin/payments';
 import { DISPLAY_LABELS as INVOICE_LABELS, createInvoiceDraft, fetchInvoicesOfOrder, isInvoiceModuleMissing, type InvoiceRow } from '@/lib/admin/invoices';
 import { AdminQueryError, fetchOrders, type AdminOrder } from '@/lib/admin/queries';
@@ -211,6 +212,8 @@ export function OrdersSection() {
   const [modeFilter, setModeFilter] = useState('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /** Annulation en attente de confirmation : action définitive (statut terminal), jamais lancée au premier clic. */
+  const [confirmCancel, setConfirmCancel] = useState<AdminOrder | null>(null);
 
   const statuses = useMemo(
     () => (state.status === 'ready' ? Array.from(new Set(state.data.orders.map((order) => order.status))).sort() : []),
@@ -241,7 +244,14 @@ export function OrdersSection() {
       reload();
       return;
     }
-    toast.success(status === 'cancelled' ? 'Commande annulée. Le stock suivi a été restitué.' : `Statut : ${statusLabel(status)}.`);
+    if (status === 'cancelled') {
+      // Message selon ce que la base a réellement restitué (aucune affirmation si la base ne le précise pas).
+      const outcome = cancellationMessage(result.data);
+      if (outcome.level === 'warning') toast.warning(outcome.text, { duration: 12000 });
+      else toast.success(outcome.text);
+    } else {
+      toast.success(`Statut : ${statusLabel(status)}.`);
+    }
     reload();
   }
 
@@ -430,20 +440,47 @@ export function OrdersSection() {
                           size="sm"
                           variant={status === 'cancelled' ? 'outline' : 'default'}
                           disabled={busy}
-                          onClick={() => void changeStatus(selected, status)}
+                          onClick={() => (status === 'cancelled' ? setConfirmCancel(selected) : void changeStatus(selected, status))}
                         >
                           {status === 'cancelled' ? 'Annuler la commande' : `Passer à « ${statusLabel(status)} »`}
                         </Button>
                       ))}
                     </div>
                   )}
-                  <p className="text-xs text-muted-foreground">Une annulation restitue le stock suivi, une seule fois.</p>
+                  <p className="text-xs text-muted-foreground">Une annulation est définitive. Elle remet en stock les quantités suivies décrémentées à la commande, une seule fois.</p>
                 </div>
               </div>
             </>
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={confirmCancel !== null} onOpenChange={(open) => !open && !busy && setConfirmCancel(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Annuler la commande {confirmCancel?.reference} ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              L’annulation est définitive : la commande ne pourra pas être rouverte. Les quantités des produits à stock suivi décrémentées à la commande
+              sont remises en stock, une seule fois. Les produits sur commande n’ont aucun stock à restituer. Les paiements déjà enregistrés ne sont pas modifiés :
+              contrepassez-les séparément si nécessaire.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy}>Garder la commande</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={busy}
+              onClick={(event) => {
+                event.preventDefault();
+                const target = confirmCancel;
+                setConfirmCancel(null);
+                if (target) void changeStatus(target, 'cancelled');
+              }}
+            >
+              Confirmer l’annulation
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
