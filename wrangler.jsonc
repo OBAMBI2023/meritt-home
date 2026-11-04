@@ -1,0 +1,10 @@
+{
+  // Meritt Home — environnement de TEST sur Cloudflare Workers (fichiers statiques uniquement, aucun code Worker).
+  // Le dossier ./out est produit par test-env/deployer-cloudflare-test.ps1 (export statique, Supabase TEST seulement).
+  "name": "meritt-home-test",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./out",
+    "not_found_handling": "404-page"
+  }
+}
