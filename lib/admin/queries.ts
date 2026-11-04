@@ -104,6 +104,13 @@ export interface AdminProduct {
   description: string | null;
   imageUrls: string[];
   createdAt: string | null;
+  /** Colonnes du stock hybride présentes en base (migration-stock-hybride.sql appliquée). */
+  hybrid: boolean;
+  inventoryMode: 'tracked' | 'on_demand';
+  availability: 'available' | 'unavailable';
+  leadTime: string | null;
+  /** product_inventory : `undefined` = aucune ligne ; `null` = ligne sans quantité ; nombre = quantité physique. */
+  quantity: number | null | undefined;
 }
 
 export interface AdminCategory {
@@ -115,14 +122,31 @@ export interface AdminCategory {
   description: string | null;
 }
 
+const PRODUCT_COLUMNS = 'id, name, slug, price_fcfa, is_published, category_id, description, image_urls, created_at';
+
+/** Dernier état connu du schéma : la migration du stock hybride est-elle appliquée ? (sert à l'écriture du formulaire) */
+let hybridKnown: boolean | null = null;
+
 async function loadProducts(): Promise<AdminProduct[]> {
-  const { data, error } = await getSupabase()
-    .from('products')
-    .select('id, name, slug, price_fcfa, is_published, category_id, description, image_urls, created_at')
-    .order('name', { ascending: true })
-    .limit(500);
-  check(error);
-  return toRows(data).flatMap((row) => {
+  const supabase = getSupabase();
+  const read = (columns: string) => supabase.from('products').select(columns).order('name', { ascending: true }).limit(500);
+  let result = await read(`${PRODUCT_COLUMNS}, inventory_mode, availability_status, lead_time`);
+  let hybrid = true;
+  // Colonne absente : la migration n'est pas appliquée sur cette base ; on relit sans les colonnes du stock hybride.
+  if (result.error && (result.error.code === '42703' || /inventory_mode|availability_status|lead_time/.test(result.error.message ?? ''))) {
+    hybrid = false;
+    result = await read(PRODUCT_COLUMNS);
+  }
+  check(result.error);
+  hybridKnown = hybrid;
+  const inventory = await supabase.from('product_inventory').select('product_id, stock_quantity').limit(2000);
+  check(inventory.error);
+  const quantities = new Map<string, number | null>();
+  for (const row of toRows(inventory.data)) {
+    const productId = toStr(row.product_id);
+    if (productId) quantities.set(productId, toInt(row.stock_quantity));
+  }
+  return toRows(result.data).flatMap((row) => {
     const id = toStr(row.id);
     const name = toStr(row.name);
     const price = toInt(row.price_fcfa);
@@ -138,6 +162,11 @@ async function loadProducts(): Promise<AdminProduct[]> {
         description: toStr(row.description),
         imageUrls: Array.isArray(row.image_urls) ? row.image_urls.filter((url): url is string => typeof url === 'string') : [],
         createdAt: toStr(row.created_at),
+        hybrid,
+        inventoryMode: row.inventory_mode === 'on_demand' ? ('on_demand' as const) : ('tracked' as const),
+        availability: row.availability_status === 'unavailable' ? ('unavailable' as const) : ('available' as const),
+        leadTime: toStr(row.lead_time),
+        quantity: quantities.has(id) ? (quantities.get(id) ?? null) : undefined,
       },
     ];
   });
@@ -161,9 +190,9 @@ async function loadCategories(): Promise<AdminCategory[]> {
 
 export const fetchAdminProducts = loadProducts;
 
-export async function fetchProductsAndCategories(): Promise<{ products: AdminProduct[]; categories: AdminCategory[] }> {
+export async function fetchProductsAndCategories(): Promise<{ products: AdminProduct[]; categories: AdminCategory[]; hybrid: boolean }> {
   const [products, categories] = await Promise.all([loadProducts(), loadCategories()]);
-  return { products, categories };
+  return { products, categories, hybrid: hybridKnown === true };
 }
 
 export async function fetchAdminCategories(): Promise<{ categories: AdminCategory[]; products: AdminProduct[] }> {

@@ -22,7 +22,33 @@ export const productFormSchema = z.object({
     .string()
     .trim()
     .refine((value) => value === '' || /^https:\/\/\S+$/.test(value), 'L’adresse de l’image doit commencer par https://.'),
+  /** Gestion du stock hybride : le mode choisi est conservé quand le produit passe en « indisponible ». */
+  inventoryMode: z.enum(['tracked', 'on_demand']),
+  availability: z.enum(['available', 'unavailable']),
+  leadTime: z.string().trim().max(80, 'Le délai est trop long (80 caractères maximum).'),
+  /** Quantité physique (produit suivi) : vide = inchangée. Elle est enregistrée dans product_inventory, jamais effacée. */
+  quantity: z
+    .string()
+    .trim()
+    .refine((value) => value === '' || (/^\d+$/.test(value) && Number(value) <= 1_000_000), 'La quantité doit être un entier de 0 à 1 000 000.'),
 });
+
+/**
+ * Règle de cohérence : un produit suivi en rupture ne peut pas garder une quantité positive (il serait « indisponible »
+ * alors que du stock existe). Un produit « sur commande » n'est pas concerné : sa quantité éventuelle est sans effet.
+ * Retourne le message à afficher, ou `null` si la combinaison est autorisée. `where` adapte la consigne à l'écran.
+ */
+export function outOfStockConflict(
+  availability: 'available' | 'unavailable',
+  mode: 'tracked' | 'on_demand',
+  quantity: number | null | undefined,
+  where: 'fiche' | 'stocks',
+): string | null {
+  if (availability !== 'unavailable' || mode !== 'tracked' || typeof quantity !== 'number' || quantity <= 0) return null;
+  return where === 'fiche'
+    ? `Un produit en rupture ne peut pas avoir un stock positif (${quantity} en stock). Mettez la quantité à 0, ou choisissez « Gestion du stock » ou « Sur commande ».`
+    : `Ce produit est en rupture : sa quantité doit rester à 0 (vous avez saisi ${quantity}). Pour saisir un stock, repassez-le en « Gestion du stock » dans sa fiche.`;
+}
 
 export type ProductFormInput = z.input<typeof productFormSchema>;
 export type ProductFormValues = z.output<typeof productFormSchema>;
@@ -79,15 +105,19 @@ function mergeImages(first: string, existing: string[]): string[] {
   return first === '' ? existing.slice(1) : [first, ...existing.slice(1)];
 }
 
-const toColumns = (values: ProductFormValues, existingImages: string[] = []) => ({
+/** `hybrid` : les colonnes du stock hybride existent en base ; sinon elles ne sont pas écrites (base sans la migration). */
+const toColumns = (values: ProductFormValues, existingImages: string[] = [], hybrid = false) => ({
   name: values.name,
   description: values.description === '' ? null : values.description,
   price_fcfa: values.price,
   category_id: values.categoryId,
   image_urls: mergeImages(values.imageUrl, existingImages),
+  ...(hybrid
+    ? { inventory_mode: values.inventoryMode, availability_status: values.availability, lead_time: values.leadTime === '' ? null : values.leadTime }
+    : {}),
 });
 
-export async function createProduct(values: ProductFormValues, publish: boolean): Promise<MutationResult<string>> {
+export async function createProduct(values: ProductFormValues, publish: boolean, hybrid = false): Promise<MutationResult<string>> {
   const denied = await assertAdmin();
   if (denied) return { ok: false, message: denied };
   const base = slugify(values.name) || 'produit';
@@ -97,7 +127,7 @@ export async function createProduct(values: ProductFormValues, publish: boolean)
     try {
       const { data, error } = await getSupabase()
         .from('products')
-        .insert({ ...toColumns(values), slug, is_published: publish })
+        .insert({ ...toColumns(values, [], hybrid), slug, is_published: publish })
         .select('id')
         .single();
       if (!error && data) return { ok: true, data: String((data as { id: unknown }).id) };
@@ -124,7 +154,7 @@ async function updateRow(id: string, columns: Record<string, unknown>): Promise<
 }
 
 /** Ne modifie que les colonnes du formulaire : slug, statut et stock restent intacts. */
-export const updateProduct = (id: string, values: ProductFormValues, existingImages: string[]) =>
-  updateRow(id, toColumns(values, existingImages));
+export const updateProduct = (id: string, values: ProductFormValues, existingImages: string[], hybrid = false) =>
+  updateRow(id, toColumns(values, existingImages, hybrid));
 
 export const setProductPublished = (id: string, published: boolean) => updateRow(id, { is_published: published });

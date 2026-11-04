@@ -21,6 +21,52 @@ export interface Product {
   /** Première image du produit (colonne `image_urls`), si elle est exploitable. */
   image: string | null;
   description: string | null;
+  /**
+   * Gestion du stock (colonnes `inventory_mode`, `availability_status`, `lead_time` ; voir migration-stock-hybride.sql).
+   * `null` : base sans cette migration (comportement d'avant : aucune mention de disponibilité, aucun blocage côté interface).
+   */
+  availability: ProductAvailabilityData | null;
+}
+
+export type InventoryMode = 'tracked' | 'on_demand';
+
+export interface ProductAvailabilityData {
+  mode: InventoryMode;
+  /** `unavailable` : consultable mais jamais achetable. */
+  status: 'available' | 'unavailable';
+  /** Délai d'approvisionnement indicatif ; affiché seulement s'il est renseigné. */
+  leadTime: string | null;
+  /** Produit suivi : quantité > 0. `null` : inconnu (produit « sur commande » ou signal indisponible). Jamais de quantité. */
+  inStock: boolean | null;
+}
+
+export type AvailabilityKind = 'in_stock' | 'sold_out' | 'on_demand' | 'unavailable';
+
+export interface AvailabilityView {
+  kind: AvailabilityKind;
+  label: string;
+  /** Peut être ajouté au panier et commandé. */
+  purchasable: boolean;
+  /** Délai indicatif, uniquement pour un produit sur commande et s'il est renseigné. */
+  leadTime: string | null;
+}
+
+/**
+ * Disponibilité affichable d'un produit, déduite uniquement des données réelles : aucune valeur inventée.
+ * Retourne `null` quand la base n'a pas (encore) le stock hybride : l'interface n'affiche alors rien de plus qu'avant.
+ */
+export function getAvailability(product: Pick<Product, 'availability'>): AvailabilityView | null {
+  const data = product.availability;
+  if (!data) return null;
+  if (data.status === 'unavailable') return { kind: 'unavailable', label: 'Indisponible', purchasable: false, leadTime: null };
+  if (data.mode === 'on_demand') {
+    return { kind: 'on_demand', label: 'Disponible sur commande', purchasable: true, leadTime: data.leadTime };
+  }
+  // Produit suivi : sans signal de stock (fonction publique absente), on n'affirme rien et on ne bloque pas.
+  if (data.inStock === null) return null;
+  return data.inStock
+    ? { kind: 'in_stock', label: 'En stock', purchasable: true, leadTime: null }
+    : { kind: 'sold_out', label: 'Épuisé', purchasable: false, leadTime: null };
 }
 
 export function formatPrice(price: number): string {

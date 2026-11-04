@@ -1,8 +1,9 @@
 'use client';
 
 import { Heart } from 'lucide-react';
+import { AvailabilityNote } from '@/components/shop/availability-note';
 import { ProductImage } from '@/components/shop/product-image';
-import { formatPrice, type Product } from '@/lib/products';
+import { formatPrice, getAvailability, type Product } from '@/lib/products';
 import { cn } from '@/lib/utils';
 
 interface ProductCardProps {
@@ -15,6 +16,8 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, categoryName, favorite, onToggleFavorite, onAdd, onOpen }: ProductCardProps) {
+  const availability = getAvailability(product);
+  const purchasable = availability?.purchasable ?? true;
   return (
     <article className="group relative flex flex-col gap-1.5">
       <button
@@ -46,13 +49,15 @@ export function ProductCard({ product, categoryName, favorite, onToggleFavorite,
           {product.name}
         </button>
       </h3>
-      <p className="mb-2 text-base font-bold">{formatPrice(product.price)}</p>
+      <p className="text-base font-bold">{formatPrice(product.price)}</p>
+      <AvailabilityNote product={product} className="mb-2" />
       <button
         type="button"
         onClick={() => onAdd(product.id)}
-        className="mt-auto w-full rounded-[13px] bg-muted py-3 text-sm font-semibold transition-colors hover:bg-accent"
+        disabled={!purchasable}
+        className="mt-auto w-full rounded-[13px] bg-muted py-3 text-sm font-semibold transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-muted"
       >
-        Ajouter au panier
+        {purchasable ? 'Ajouter au panier' : availability?.label}
       </button>
     </article>
   );

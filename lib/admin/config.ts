@@ -142,14 +142,23 @@ export interface StockProduct {
   /** `undefined` : aucune ligne dans `product_inventory` ; `null` : ligne présente, quantité NULL. */
   quantity: number | null | undefined;
   state: StockState;
+  /** Mode de gestion (migration-stock-hybride.sql). `tracked` par défaut, y compris avant la migration. */
+  inventoryMode: 'tracked' | 'on_demand';
+  unavailable: boolean;
 }
 
 export async function fetchStockProducts(): Promise<StockProduct[]> {
   const supabase = getSupabase();
-  const [products, inventory] = await Promise.all([
-    supabase.from('products').select('id, name, is_published').order('name', { ascending: true }).limit(1000),
+  const readProducts = (columns: string) => supabase.from('products').select(columns).order('name', { ascending: true }).limit(1000);
+  const [hybridProducts, inventory] = await Promise.all([
+    readProducts('id, name, is_published, inventory_mode, availability_status'),
     supabase.from('product_inventory').select('product_id, stock_quantity').limit(2000),
   ]);
+  // Colonnes absentes : la migration du stock hybride n'est pas appliquée ; on relit sans elles.
+  const products =
+    hybridProducts.error && (hybridProducts.error.code === '42703' || /inventory_mode|availability_status/.test(hybridProducts.error.message ?? ''))
+      ? await readProducts('id, name, is_published')
+      : hybridProducts;
   check(products.error);
   check(inventory.error);
   const quantities = new Map<string, number | null>();
@@ -163,7 +172,17 @@ export async function fetchStockProducts(): Promise<StockProduct[]> {
     if (!productId || !name) return [];
     const quantity = quantities.has(productId) ? (quantities.get(productId) ?? null) : undefined;
     const state: StockState = quantity === undefined ? 'untracked' : quantity === null ? 'unknown' : quantity === 0 ? 'zero' : 'tracked';
-    return [{ productId, name, published: row.is_published === true, quantity, state }];
+    return [
+      {
+        productId,
+        name,
+        published: row.is_published === true,
+        quantity,
+        state,
+        inventoryMode: row.inventory_mode === 'on_demand' ? ('on_demand' as const) : ('tracked' as const),
+        unavailable: row.availability_status === 'unavailable',
+      },
+    ];
   });
 }
 

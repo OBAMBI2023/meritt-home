@@ -3,8 +3,9 @@
 import { Heart, MessageCircle, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { AvailabilityNote } from '@/components/shop/availability-note';
 import { ProductImage } from '@/components/shop/product-image';
-import { formatPrice, type Product } from '@/lib/products';
+import { formatPrice, getAvailability, type Product } from '@/lib/products';
 import { SITE, whatsappLink } from '@/lib/site';
 import { cn } from '@/lib/utils';
 
@@ -31,6 +32,7 @@ export function ProductDialog({ product, categoryName, favorite, onClose, onTogg
                 {categoryName && <p className="section-eyebrow">{categoryName}</p>}
                 <DialogTitle className="font-display text-3xl font-semibold leading-tight">{product.name}</DialogTitle>
                 <p className="text-2xl font-semibold text-primary">{formatPrice(product.price)}</p>
+                <AvailabilityNote product={product} />
               </div>
 
               <DialogDescription className="text-sm leading-relaxed">
@@ -43,13 +45,14 @@ export function ProductDialog({ product, categoryName, favorite, onClose, onTogg
                   type="button"
                   size="lg"
                   className="h-12"
+                  disabled={getAvailability(product)?.purchasable === false}
                   onClick={() => {
                     onAdd(product.id);
                     onClose();
                   }}
                 >
                   <ShoppingBag className="mr-2 h-4 w-4" aria-hidden />
-                  Ajouter au panier
+                  {getAvailability(product)?.purchasable === false ? getAvailability(product)?.label : 'Ajouter au panier'}
                 </Button>
                 <div className="grid grid-cols-2 gap-3">
                   <Button

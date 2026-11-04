@@ -3,9 +3,10 @@
 import { ArrowRight, Minus, Plus, ShoppingBag, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { AvailabilityNote } from '@/components/shop/availability-note';
 import { ProductImage } from '@/components/shop/product-image';
 import { MAX_QUANTITY, type DetailedCartLine } from '@/lib/cart';
-import { formatPrice, getCategory, type Category } from '@/lib/products';
+import { formatPrice, getAvailability, getCategory, type Category } from '@/lib/products';
 
 interface CartSheetProps {
   open: boolean;
@@ -20,6 +21,8 @@ interface CartSheetProps {
 }
 
 export function CartSheet({ open, onOpenChange, lines, categories, totals, count, onUpdate, onRemove, onCheckout }: CartSheetProps) {
+  // Articles devenus épuisés ou indisponibles depuis leur ajout : à retirer avant de commander.
+  const blocked = lines.filter(({ product }) => getAvailability(product)?.purchasable === false);
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="flex w-full flex-col gap-0 p-0 sm:max-w-md">
@@ -51,6 +54,7 @@ export function CartSheet({ open, onOpenChange, lines, categories, totals, count
                     <div>
                       <p className="font-semibold leading-snug">{product.name}</p>
                       <p className="text-xs text-muted-foreground">{getCategory(categories, product.categoryId)?.name}</p>
+                      <AvailabilityNote product={product} className="mt-1" />
                     </div>
                     <p className="text-sm text-muted-foreground">{formatPrice(product.price)} l’unité</p>
                     <div className="mt-auto flex items-center justify-between gap-2">
@@ -102,7 +106,12 @@ export function CartSheet({ open, onOpenChange, lines, categories, totals, count
               <p className="text-xs text-muted-foreground">
                 Les frais de livraison dépendent de la commune et sont indiqués à l’étape suivante (retrait sur place : aucun frais).
               </p>
-              <Button type="button" size="lg" className="h-12 w-full" onClick={onCheckout}>
+              {blocked.length > 0 && (
+                <p role="alert" className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                  Retirez {blocked.length > 1 ? 'ces articles' : 'cet article'} pour commander : {blocked.map(({ product }) => product.name).join(', ')}.
+                </p>
+              )}
+              <Button type="button" size="lg" className="h-12 w-full" onClick={onCheckout} disabled={blocked.length > 0}>
                 Passer la commande
                 <ArrowRight className="ml-2 h-4 w-4" aria-hidden />
               </Button>

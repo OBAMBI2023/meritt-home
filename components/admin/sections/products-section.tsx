@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAdminQuery } from '@/hooks/use-admin-query';
+import { setStockQuantity } from '@/lib/admin/config';
 import { createProduct, setProductPublished, updateProduct, type ProductFormValues } from '@/lib/admin/products';
 import { fetchProductsAndCategories, type AdminProduct } from '@/lib/admin/queries';
 import { formatPrice } from '@/lib/products';
@@ -24,6 +25,21 @@ const normalize = (value: string) =>
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .trim();
+
+/** Disponibilité réelle d'un produit dans la liste d'administration (la quantité n'est visible qu'ici, jamais côté public). */
+function AvailabilityBadge({ product }: { product: AdminProduct }) {
+  if (product.availability === 'unavailable') return <Badge variant="destructive">Indisponible</Badge>;
+  if (product.inventoryMode === 'on_demand') {
+    return (
+      <span className="inline-flex flex-col gap-0.5">
+        <Badge variant="outline">Sur commande</Badge>
+        {product.leadTime && <span className="text-xs text-muted-foreground">{product.leadTime}</span>}
+      </span>
+    );
+  }
+  if (typeof product.quantity !== 'number') return <Badge variant="secondary">Quantité à saisir</Badge>;
+  return product.quantity > 0 ? <Badge variant="outline">En stock : {product.quantity}</Badge> : <Badge variant="secondary">Épuisé</Badge>;
+}
 
 export function ProductsSection() {
   const { state, reload } = useAdminQuery(fetchProductsAndCategories);
@@ -49,11 +65,26 @@ export function ProductsSection() {
       : [...filtered].sort((a, b) => a.name.localeCompare(b.name, 'fr'));
   }, [state, search, categoryFilter, statusFilter, sort]);
 
+  const hybrid = state.status === 'ready' ? state.data.hybrid : false;
+
   const handleSubmit = useCallback(
     async (values: ProductFormValues, intent: SubmitIntent): Promise<string | null> => {
       const editing = dialog.product;
-      const result = editing ? await updateProduct(editing.id, values, editing.imageUrls) : await createProduct(values, intent === 'publish');
+      const result = editing ? await updateProduct(editing.id, values, editing.imageUrls, hybrid) : await createProduct(values, intent === 'publish', hybrid);
       if (!result.ok) return result.message;
+
+      // Quantité physique (produit suivi) : écrite dans product_inventory, avec la valeur vue pour refuser un écrasement concurrent.
+      if (hybrid && values.inventoryMode === 'tracked' && values.quantity !== '') {
+        const productId = editing ? editing.id : typeof result.data === 'string' ? result.data : null;
+        const previous = editing ? editing.quantity : undefined;
+        if (productId && previous !== Number(values.quantity)) {
+          const stock = await setStockQuantity(productId, Number(values.quantity), previous);
+          if (!stock.ok) {
+            reload();
+            return `Produit enregistré, mais la quantité n’a pas été enregistrée : ${stock.message}`;
+          }
+        }
+      }
 
       // Brouillon existant publié depuis le formulaire : second appel explicite sur la colonne de statut.
       if (editing && intent === 'publish') {
@@ -68,7 +99,7 @@ export function ProductsSection() {
       reload();
       return null;
     },
-    [dialog.product, reload]
+    [dialog.product, reload, hybrid]
   );
 
   async function togglePublished(product: AdminProduct) {
@@ -156,6 +187,7 @@ export function ProductsSection() {
                     <TableHead>Catégorie</TableHead>
                     <TableHead className="text-right">Prix</TableHead>
                     <TableHead>Statut</TableHead>
+                    {hybrid && <TableHead>Disponibilité</TableHead>}
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -171,6 +203,11 @@ export function ProductsSection() {
                       <TableCell>
                         <Badge variant={product.published ? 'default' : 'secondary'}>{product.published ? 'Publié' : 'Brouillon'}</Badge>
                       </TableCell>
+                      {hybrid && (
+                        <TableCell>
+                          <AvailabilityBadge product={product} />
+                        </TableCell>
+                      )}
                       <TableCell className="space-x-2 whitespace-nowrap text-right">
                         <Button type="button" size="sm" variant="outline" onClick={() => setDialog({ open: true, product })}>
                           Modifier
@@ -198,6 +235,7 @@ export function ProductsSection() {
         open={dialog.open}
         product={dialog.product}
         categories={categories}
+        hybrid={hybrid}
         onClose={() => setDialog({ open: false, product: null })}
         onSubmit={handleSubmit}
       />

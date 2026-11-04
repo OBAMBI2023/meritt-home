@@ -25,6 +25,8 @@ export interface OrderInput {
   address: string;
   notes: string;
   items: { productId: string; quantity: number }[];
+  /** Noms des produits du panier (par identifiant) : sert uniquement à nommer l'article en cause dans un message d'erreur. */
+  productNames?: Record<string, string>;
   /** Champ piège : doit rester vide (un robot le remplit). */
   website: string;
 }
@@ -40,10 +42,10 @@ export interface OrderConfirmation {
   subtotal: number;
   deliveryFee: number;
   total: number;
-  items: { name: string; unitPrice: number; quantity: number; lineTotal: number }[];
+  items: { name: string; unitPrice: number; quantity: number; lineTotal: number; onDemand?: boolean; leadTime?: string | null }[];
 }
 
-export type OrderResult = { ok: true; order: OrderConfirmation } | { ok: false; code: string; message: string };
+export type OrderResult = { ok: true; order: OrderConfirmation } | { ok: false; code: string; message: string; productId?: string };
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
 const str = (value: unknown): string | null => (typeof value === 'string' && value !== '' ? value : null);
@@ -82,12 +84,22 @@ const MESSAGES: Record<string, string> = {
   INVALID_FULFILLMENT: 'Le mode de réception choisi est invalide.',
   INVALID_ADDRESS: 'L’adresse de livraison est incomplète : indiquez la commune et une adresse précise.',
   RATE_LIMITED: 'Trop de commandes récentes avec ce numéro de téléphone. Réessayez plus tard ou contactez-nous.',
-  PRODUCT_UNAVAILABLE: 'Un article de votre panier n’est plus disponible. Retirez-le puis réessayez.',
-  STOCK_UNTRACKED: 'Un article de votre panier n’est pas commandable pour le moment. Contactez-nous.',
-  INSUFFICIENT_STOCK: 'Le stock est insuffisant pour un article de votre panier. Réduisez la quantité puis réessayez.',
   NO_DELIVERY_FEE: 'La livraison n’est pas disponible pour cette commune. Choisissez une autre commune ou le retrait sur place.',
   AMOUNT_TOO_LARGE: 'Le montant de la commande est trop élevé. Réduisez le panier.',
 };
+
+/**
+ * Erreurs liées à un produit : la base renvoie le code dans error.message et l'identifiant du produit dans error.details.
+ * Le nom vient du panier local (input.productNames) ; sans nom, le message reste explicite sans citer d'article.
+ */
+const PRODUCT_MESSAGES: Record<string, (name: string | null) => string> = {
+  PRODUCT_NOT_FOUND: (name) => `${name ? `« ${name} »` : 'Un article de votre panier'} est introuvable. Retirez-le de votre panier puis réessayez.`,
+  PRODUCT_NOT_PUBLISHED: (name) => `${name ? `« ${name} »` : 'Un article de votre panier'} n’est plus en vente. Retirez-le de votre panier puis réessayez.`,
+  PRODUCT_UNAVAILABLE: (name) => `${name ? `« ${name} »` : 'Un article de votre panier'} est indisponible pour le moment. Retirez-le de votre panier ou contactez-nous.`,
+  STOCK_UNTRACKED: (name) => `${name ? `« ${name} »` : 'Un article de votre panier'} : disponibilité non configurée. Veuillez contacter le service client.`,
+  INSUFFICIENT_STOCK: (name) => `Le stock de ${name ? `« ${name} »` : 'un article de votre panier'} est insuffisant ou épuisé. Réduisez la quantité ou retirez-le, puis réessayez.`,
+};
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // La réponse a pu se perdre alors que la commande existe : on ne prétend donc pas qu'elle n'a pas été créée.
 // Réessayer est sans risque (même clé d'idempotence : jamais de doublon) ; sinon contacter la boutique.
@@ -107,7 +119,9 @@ function parseOrder(data: unknown): OrderConfirmation | null {
     const unitPrice = int(row.unit_price_fcfa);
     const quantity = int(row.quantity);
     const lineTotal = int(row.line_total_fcfa);
-    return name && unitPrice !== null && quantity !== null && lineTotal !== null ? [{ name, unitPrice, quantity, lineTotal }] : [];
+    return name && unitPrice !== null && quantity !== null && lineTotal !== null
+      ? [{ name, unitPrice, quantity, lineTotal, onDemand: row.inventory_mode === 'on_demand', leadTime: str(row.lead_time) }]
+      : [];
   });
   if (items.length === 0 || items.length !== data.items.length) return null;
   return {
@@ -144,8 +158,12 @@ export async function createOrder(input: OrderInput): Promise<OrderResult> {
       p_website: input.website,
     });
     if (error) {
-      const code = typeof error.message === 'string' && error.message in MESSAGES ? error.message : 'UNKNOWN';
-      return { ok: false, code, message: MESSAGES[code] ?? GENERIC };
+      const known = typeof error.message === 'string' && (error.message in MESSAGES || error.message in PRODUCT_MESSAGES);
+      const code = known ? error.message : 'UNKNOWN';
+      const productId = typeof error.details === 'string' && UUID.test(error.details.trim()) ? error.details.trim().toLowerCase() : undefined;
+      const productMessage = PRODUCT_MESSAGES[code];
+      const name = productId ? (input.productNames?.[productId] ?? null) : null;
+      return { ok: false, code, productId, message: productMessage ? productMessage(name) : (MESSAGES[code] ?? GENERIC) };
     }
     const order = parseOrder(data);
     if (!order) return { ok: false, code: 'BAD_RESPONSE', message: GENERIC };

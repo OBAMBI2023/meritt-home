@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAdminQuery } from '@/hooks/use-admin-query';
 import { fetchOrderSettings, fetchStockProducts, setStockQuantity, stockQuantitySchema, type StockPolicy, type StockProduct, type StockState } from '@/lib/admin/config';
+import { outOfStockConflict } from '@/lib/admin/products';
 
 type Filter = 'all' | StockState;
 
@@ -42,11 +43,18 @@ function StockRow({ product, onSaved }: { product: StockProduct; onSaved: () => 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   useEffect(() => setValue(current), [current]);
+  /** Produit « sur commande » : la quantité éventuelle est conservée mais n'a aucun effet ; sa saisie est désactivée. */
+  const onDemand = product.inventoryMode === 'on_demand';
 
   async function save() {
     const parsed = stockQuantitySchema.safeParse(value);
     if (!parsed.success) {
       setError(parsed.error.issues[0].message);
+      return;
+    }
+    const conflict = outOfStockConflict(product.unavailable ? 'unavailable' : 'available', onDemand ? 'on_demand' : 'tracked', parsed.data, 'stocks');
+    if (conflict) {
+      setError(conflict);
       return;
     }
     setError(null);
@@ -69,8 +77,13 @@ function StockRow({ product, onSaved }: { product: StockProduct; onSaved: () => 
         <Badge variant={product.published ? 'default' : 'secondary'}>{product.published ? 'Publié' : 'Brouillon'}</Badge>
       </TableCell>
       <TableCell>
-        <Badge variant={product.state === 'tracked' ? 'outline' : 'secondary'}>{STATE_LABEL[product.state]}</Badge>
-        {product.state === 'tracked' && <span className="ml-2 text-sm">{product.quantity}</span>}
+        {onDemand ? (
+          <Badge variant="outline">Sur commande</Badge>
+        ) : (
+          <Badge variant={product.state === 'tracked' ? 'outline' : 'secondary'}>{STATE_LABEL[product.state]}</Badge>
+        )}
+        {(product.state === 'tracked' || (onDemand && typeof product.quantity === 'number')) && <span className="ml-2 text-sm">{product.quantity}</span>}
+        {product.unavailable && <Badge variant="destructive" className="ml-2">Indisponible</Badge>}
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-2">
@@ -80,14 +93,17 @@ function StockRow({ product, onSaved }: { product: StockProduct; onSaved: () => 
             className="h-9 w-24"
             placeholder="Quantité"
             value={value}
+            disabled={onDemand}
+            title={onDemand ? 'Produit sur commande : le stock n’est pas suivi. Changez le mode dans Produits pour saisir une quantité.' : undefined}
             onChange={(event) => setValue(event.target.value)}
             aria-invalid={!!error}
           />
-          <Button type="button" size="sm" disabled={busy || value.trim() === '' || value.trim() === current} onClick={() => void save()}>
+          <Button type="button" size="sm" disabled={onDemand || busy || value.trim() === '' || value.trim() === current} onClick={() => void save()}>
             {busy ? '…' : 'Enregistrer'}
           </Button>
         </div>
         {error && <p className="mt-1 max-w-xs text-xs text-destructive">{error}</p>}
+        {onDemand && <p className="mt-1 max-w-xs text-xs text-muted-foreground">Produit sur commande : stock non suivi (quantité conservée, sans effet).</p>}
       </TableCell>
     </TableRow>
   );
@@ -107,7 +123,7 @@ export function StockSection() {
   const policyText =
     state.status === 'ready' && state.data.policy
       ? state.data.policy === 'reject'
-        ? 'Règle actuelle : un produit « non suivi » ou à « quantité inconnue » ne peut pas être commandé.'
+        ? 'Règle actuelle : un produit en gestion du stock « non suivi » ou à « quantité inconnue » ne peut pas être commandé (les produits « sur commande » ne sont pas concernés ; mode réglable par produit dans Produits).'
         : 'Règle actuelle : un produit « non suivi » ou à « quantité inconnue » est vendu sans contrôle ni décrément du stock.'
       : null;
 

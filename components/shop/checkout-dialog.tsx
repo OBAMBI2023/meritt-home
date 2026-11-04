@@ -205,6 +205,7 @@ export function CheckoutDialog({ open, onOpenChange, lines, totals, onClearCart 
       address: form.address.trim(),
       notes: form.instructions.trim(),
       items: lines.map(({ product, quantity }) => ({ productId: product.id, quantity })),
+      productNames: Object.fromEntries(lines.map(({ product }) => [product.id, product.name])),
       website: form.website,
     });
     setSubmitting(false);
@@ -258,6 +259,11 @@ export function CheckoutDialog({ open, onOpenChange, lines, totals, onClearCart 
                 <li key={`${item.name}-${item.unitPrice}`} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
                   <span>
                     {item.name} <span className="text-muted-foreground">× {item.quantity}</span>
+                    {item.onDemand && (
+                      <span className="block text-xs text-muted-foreground">
+                        Sur commande{item.leadTime ? ` · délai indicatif : ${item.leadTime}` : ''}
+                      </span>
+                    )}
                   </span>
                   <span className="font-medium">{formatPrice(item.lineTotal)}</span>
                 </li>
