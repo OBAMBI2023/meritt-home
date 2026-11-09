@@ -1,0 +1,61 @@
+/*
+ * Écran de lancement Meritt Home.
+ * Le calque est rendu dans le HTML (aucun flash blanc) et se retire seul en 1,5 s au plus, même sans JavaScript.
+ * Il ne capte jamais les clics (pointer-events: none) et n'apparaît pas si l'utilisateur réduit les animations.
+ */
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: hsl(40 33% 96%); /* ivoire */
+  pointer-events: none;
+  /* Repli CSS : fondu sortant entre 1,1 s et 1,5 s. */
+  animation: splash-out 0.4s ease-in 1.1s forwards;
+}
+
+/* Départ anticipé quand la page est déjà chargée (ajouté par splash-screen.tsx). */
+.splash.is-leaving {
+  /* Nom distinct : un même nom ne relancerait pas l'animation, il ferait sauter le fondu. */
+  animation: splash-leave 0.4s ease-in forwards;
+}
+
+.splash__logo {
+  opacity: 0;
+  transform: scale(0.97);
+  animation: splash-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.1s forwards;
+}
+
+@keyframes splash-in {
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes splash-out {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+@keyframes splash-leave {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+/* Déjà vu pendant cette session (voir le script dans app/layout.tsx). */
+.splash-seen .splash {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash {
+    display: none;
+  }
+}

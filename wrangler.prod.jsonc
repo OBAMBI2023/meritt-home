@@ -1,0 +1,11 @@
+{
+  // Meritt Home — PRODUCTION sur Cloudflare Workers (fichiers statiques uniquement, aucun code Worker).
+  // Le dossier ./out est produit par scripts/deployer-cloudflare-prod.ps1 (export statique, Supabase de PRODUCTION seulement).
+  // Le Worker de TEST (wrangler.jsonc, « meritt-home-test ») n'est pas touché.
+  "name": "meritt-home",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./out",
+    "not_found_handling": "404-page"
+  }
+}

@@ -3,14 +3,15 @@
 import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Banknote, Boxes, ClipboardList, ExternalLink, FileText, LayoutDashboard, LogOut, Menu, PackageCheck, Palette, Settings, Tags } from 'lucide-react';
+import { Banknote, Boxes, ClipboardList, ExternalLink, FileText, LayoutDashboard, LogOut, Menu, PackageCheck, Palette, Ruler, Settings, Tags } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { useAdmin } from '@/components/admin/admin-context';
 import { BrandLogo } from '@/components/shop/brand-logo';
 import { cn } from '@/lib/utils';
+import { HIDE_CUSTOM_MODULE } from '@/lib/site';
 
-const NAV = [
+const ALL_NAV = [
   { href: '/admin', label: 'Vue d’ensemble', icon: LayoutDashboard },
   { href: '/admin/produits', label: 'Produits', icon: PackageCheck },
   { href: '/admin/categories', label: 'Catégories', icon: Tags },
@@ -18,9 +19,12 @@ const NAV = [
   { href: '/admin/commandes', label: 'Commandes', icon: ClipboardList },
   { href: '/admin/encaissements', label: 'Encaissements', icon: Banknote },
   { href: '/admin/factures', label: 'Factures', icon: FileText },
+  { href: '/admin/sur-mesure', label: 'Demandes sur mesure', icon: Ruler },
   { href: '/admin/bannieres', label: 'Bannières', icon: Palette },
   { href: '/admin/parametres', label: 'Paramètres', icon: Settings },
 ] as const;
+
+const NAV = ALL_NAV.filter(({ href }) => !(HIDE_CUSTOM_MODULE && href === '/admin/sur-mesure'));
 
 function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
   return (
@@ -72,13 +76,18 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-muted/40 print:block print:bg-white">
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col gap-6 border-r bg-card p-5 md:flex print:!hidden">
-        <div className="space-y-1">
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col overflow-hidden border-r bg-card md:flex print:!hidden">
+        <div className="shrink-0 space-y-1 px-5 pb-5 pt-5 [@media(max-height:420px)]:pb-2 [@media(max-height:420px)]:pt-2">
           <BrandLogo />
           <p className="text-xs uppercase tracking-wider text-muted-foreground">Administration</p>
         </div>
-        <NavLinks pathname={pathname} />
-        <SidebarFooter onSignOut={() => void signOut()} />
+        {/* Seule cette zone défile : `min-h-0` permet au conteneur flex de rétrécir sous la hauteur de son contenu. */}
+        <div className="sidebar-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-5 py-1">
+          <NavLinks pathname={pathname} />
+        </div>
+        <div className="shrink-0 border-t p-5 [@media(max-height:420px)]:p-2">
+          <SidebarFooter onSignOut={() => void signOut()} />
+        </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -106,15 +115,19 @@ export function AdminShell({ children }: { children: ReactNode }) {
       </div>
 
       <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-        <SheetContent side="left" className="flex w-72 flex-col gap-6 p-5">
-          <div className="space-y-1">
+        <SheetContent side="left" className="flex w-72 flex-col gap-0 overflow-hidden p-0">
+          <div className="shrink-0 space-y-1 px-5 pb-5 pt-5 [@media(max-height:420px)]:pb-2 [@media(max-height:420px)]:pt-2">
             <SheetTitle className="sr-only">Menu d’administration</SheetTitle>
             <SheetDescription className="sr-only">Navigation entre les modules d’administration</SheetDescription>
             <BrandLogo />
             <p className="text-xs uppercase tracking-wider text-muted-foreground">Administration</p>
           </div>
-          <NavLinks pathname={pathname} onNavigate={() => setMenuOpen(false)} />
-          <SidebarFooter onSignOut={() => void signOut()} />
+          <div className="sidebar-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-5 py-1">
+            <NavLinks pathname={pathname} onNavigate={() => setMenuOpen(false)} />
+          </div>
+          <div className="shrink-0 border-t p-5 [@media(max-height:420px)]:p-2">
+            <SidebarFooter onSignOut={() => void signOut()} />
+          </div>
         </SheetContent>
       </Sheet>
     </div>

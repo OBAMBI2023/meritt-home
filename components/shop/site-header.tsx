@@ -1,7 +1,10 @@
 'use client';
 
+import Link from 'next/link';
 import { Heart, ShoppingBag } from 'lucide-react';
 import { BrandLogo } from '@/components/shop/brand-logo';
+import { Logo } from '@/components/shop/logo';
+import { CUSTOM_PATH, HIDE_CUSTOM_MODULE } from '@/lib/site';
 
 const LINKS = [
   { href: '#accueil', label: 'Accueil' },
@@ -14,10 +17,15 @@ const LINKS = [
 interface SiteHeaderProps {
   /** Masque le lien « Catégories » quand la section n'est pas affichée. */
   showCategories: boolean;
-  cartCount: number;
-  favoriteCount: number;
-  onOpenCart: () => void;
-  onOpenFavorites: () => void;
+  cartCount?: number;
+  favoriteCount?: number;
+  /** Absents (page /sur-mesure) : les boutons panier et favoris ne sont pas affichés. */
+  onOpenCart?: () => void;
+  onOpenFavorites?: () => void;
+  /** Préfixe des ancres : « / » depuis une autre page que l'accueil, chaîne vide sur l'accueil. */
+  basePath?: string;
+  /** Page courante, pour marquer le lien actif. */
+  current?: 'home' | 'custom';
 }
 
 function CountBadge({ count }: { count: number }) {
@@ -35,49 +43,62 @@ function CountBadge({ count }: { count: number }) {
 const iconButton =
   'relative flex h-11 w-11 items-center justify-center rounded-[13px] text-foreground transition-colors hover:bg-muted';
 
-export function SiteHeader({ showCategories, cartCount, favoriteCount, onOpenCart, onOpenFavorites }: SiteHeaderProps) {
+const activeLink = 'text-sm font-semibold text-ring';
+const idleLink = 'text-sm font-medium text-muted-foreground transition-colors hover:text-ring';
+
+export function SiteHeader({
+  showCategories,
+  cartCount = 0,
+  favoriteCount = 0,
+  onOpenCart,
+  onOpenFavorites,
+  basePath = '',
+  current = 'home',
+}: SiteHeaderProps) {
   return (
     <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div className="page-container flex h-[68px] items-center justify-between gap-4 sm:h-[84px] lg:px-10">
-        <a href="#accueil" className="rounded-md" aria-label="Meritt Home, retour à l'accueil">
-          <BrandLogo />
+        <a href={`${basePath}#accueil`} className="rounded-md" aria-label="Meritt Home, retour à l'accueil">
+          <Logo variant="symbol" className="hidden max-[339px]:block text-foreground" />
+          <BrandLogo className="max-[339px]:hidden" />
         </a>
 
         <nav aria-label="Navigation principale" className="hidden items-center gap-9 md:flex">
           {LINKS.filter((link) => showCategories || !link.needsCategories).map((link, index) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className={
-                index === 0
-                  ? 'text-sm font-semibold text-ring'
-                  : 'text-sm font-medium text-muted-foreground transition-colors hover:text-ring'
-              }
-            >
+            <a key={link.href} href={`${basePath}${link.href}`} className={index === 0 && current === 'home' ? activeLink : idleLink}>
               {link.label}
             </a>
           ))}
+          {!HIDE_CUSTOM_MODULE && (
+            <Link href={CUSTOM_PATH} aria-current={current === 'custom' ? 'page' : undefined} className={current === 'custom' ? activeLink : idleLink}>
+              Sur mesure
+            </Link>
+          )}
         </nav>
 
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onOpenFavorites}
-            className={iconButton}
-            aria-label={favoriteCount > 0 ? `Favoris, ${favoriteCount} produit${favoriteCount > 1 ? 's' : ''}` : 'Favoris'}
-          >
-            <Heart className="h-5 w-5" aria-hidden />
-            <CountBadge count={favoriteCount} />
-          </button>
-          <button
-            type="button"
-            onClick={onOpenCart}
-            className={iconButton}
-            aria-label={cartCount > 0 ? `Panier, ${cartCount} article${cartCount > 1 ? 's' : ''}` : 'Panier'}
-          >
-            <ShoppingBag className="h-5 w-5" aria-hidden />
-            <CountBadge count={cartCount} />
-          </button>
+          {onOpenFavorites && (
+            <button
+              type="button"
+              onClick={onOpenFavorites}
+              className={iconButton}
+              aria-label={favoriteCount > 0 ? `Favoris, ${favoriteCount} produit${favoriteCount > 1 ? 's' : ''}` : 'Favoris'}
+            >
+              <Heart className="h-5 w-5" aria-hidden />
+              <CountBadge count={favoriteCount} />
+            </button>
+          )}
+          {onOpenCart && (
+            <button
+              type="button"
+              onClick={onOpenCart}
+              className={iconButton}
+              aria-label={cartCount > 0 ? `Panier, ${cartCount} article${cartCount > 1 ? 's' : ''}` : 'Panier'}
+            >
+              <ShoppingBag className="h-5 w-5" aria-hidden />
+              <CountBadge count={cartCount} />
+            </button>
+          )}
         </div>
       </div>
     </header>

@@ -7,6 +7,8 @@ import { CartSheet } from '@/components/shop/cart-sheet';
 import { CatalogueSection, type CatalogueStatus } from '@/components/shop/catalogue-section';
 import { CategoriesSection } from '@/components/shop/categories-section';
 import { ChristmasBanner } from '@/components/shop/christmas-banner';
+import { CustomBanner } from '@/components/shop/custom-banner';
+import { HIDE_CUSTOM_MODULE } from '@/lib/site';
 import { CollectionsSection } from '@/components/shop/collections-section';
 import { PromoBanner } from '@/components/shop/promo-banner';
 import { CheckoutDialog } from '@/components/shop/checkout-dialog';
@@ -21,6 +23,7 @@ import { useCatalogue } from '@/hooks/use-catalogue';
 import { useFavorites } from '@/hooks/use-favorites';
 import {
   countByCategory,
+  getAvailability,
   getCategory,
   queryProducts,
   type Category,
@@ -92,8 +95,14 @@ export function Storefront() {
       : { status: catalogueState.status };
 
   const addToCart = (productId: string) => {
-    cart.add(productId);
     const product = products.find((item) => item.id === productId);
+    const availability = product ? getAvailability(product) : null;
+    // Épuisé ou indisponible : ajout refusé (la base refuse de toute façon la commande).
+    if (product && availability && !availability.purchasable) {
+      toast.error(`${product.name} : ${availability.label.toLowerCase()}. Il ne peut pas être ajouté au panier.`);
+      return;
+    }
+    cart.add(productId);
     if (product) toast.success(`${product.name} ajouté au panier`);
   };
 
@@ -128,6 +137,11 @@ export function Storefront() {
   };
 
   const startCheckout = () => {
+    const blocked = cart.details.filter((line) => getAvailability(line.product)?.purchasable === false);
+    if (blocked.length > 0) {
+      toast.error(`Retirez de votre panier : ${blocked.map((line) => line.product.name).join(', ')} (non disponible à la commande).`);
+      return;
+    }
     setCartOpen(false);
     setCheckoutOpen(true);
   };
@@ -154,6 +168,7 @@ export function Storefront() {
           products={products}
           onSelect={selectCategory}
         />
+        {!HIDE_CUSTOM_MODULE && <CustomBanner />}
         <CatalogueSection
           catalogue={catalogueStatus}
           products={visibleProducts}

@@ -1,13 +1,13 @@
 import Link from 'next/link';
 import { MapPin, MessageCircle, ShieldCheck } from 'lucide-react';
 import { BrandLogo } from '@/components/shop/brand-logo';
-import { SITE, whatsappLink } from '@/lib/site';
+import { CUSTOM, CUSTOM_PATH, HIDE_CUSTOM_MODULE, SITE, whatsappLink } from '@/lib/site';
 
 export function SiteFooter() {
   return (
     <footer id="contact" className="mt-10 scroll-mt-24 bg-muted sm:mt-16">
       <div className="page-container flex flex-col items-center gap-4 py-12 text-center">
-        <BrandLogo className="items-center" />
+        <BrandLogo className="h-8" />
         <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
           Des intérieurs qui ont une âme, sélectionnés avec passion en Côte d’Ivoire.
         </p>
@@ -23,6 +23,13 @@ export function SiteFooter() {
               WhatsApp : {SITE.whatsappDisplay}
             </a>
           </li>
+          {!HIDE_CUSTOM_MODULE && (
+            <li>
+              <Link href={CUSTOM_PATH} className="inline-flex min-h-[2.75rem] items-center gap-2 hover:text-ring hover:underline">
+                {CUSTOM.name}
+              </Link>
+            </li>
+          )}
           <li className="inline-flex min-h-[2.75rem] items-center gap-2 text-muted-foreground">
             <MapPin className="h-4 w-4" aria-hidden />
             {SITE.location}

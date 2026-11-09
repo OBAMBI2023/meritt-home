@@ -271,7 +271,7 @@ export function OrdersSection() {
         ) : (
           <div className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-3">
-              <div className="relative">
+              <div className="relative sm:col-span-1">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
                 <Input aria-label="Rechercher une commande" placeholder="Référence, nom ou téléphone" className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
               </div>
@@ -303,7 +303,42 @@ export function OrdersSection() {
             {rows.length === 0 ? (
               <EmptyState title="Aucun résultat" text="Aucune commande ne correspond à votre recherche ou à vos filtres." />
             ) : (
-              <div className="rounded-lg border bg-card">
+              <>
+              <ul className="space-y-3 md:hidden" aria-label="Liste des commandes">
+                {rows.map((order) => (
+                  <li key={order.id}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedId(order.id)}
+                      aria-label={`Voir la commande ${order.reference}`}
+                      className="block w-full space-y-3 rounded-lg border bg-card p-4 text-left shadow-sm transition-colors active:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold">{order.reference}</p>
+                          <p className="text-xs text-muted-foreground">{formatDate(order.createdAt)}</p>
+                        </div>
+                        <Badge variant="secondary" className="shrink-0">
+                          {statusLabel(order.status)}
+                        </Badge>
+                      </div>
+                      <div className="min-w-0 text-sm">
+                        <p className="truncate font-medium">{order.customerName}</p>
+                        <p className="text-muted-foreground">{order.customerPhone}</p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="outline">{MODE_LABELS[order.mode]}</Badge>
+                        <Badge variant={order.paymentStatus === 'paid' ? 'default' : 'outline'}>{paymentLabel(order.paymentStatus)}</Badge>
+                      </div>
+                      <div className="flex items-center justify-between border-t pt-3">
+                        <span className="text-xs text-muted-foreground">Total</span>
+                        <span className="text-base font-semibold">{formatPrice(order.total)}</span>
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <div className="hidden rounded-lg border bg-card md:block">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -342,6 +377,7 @@ export function OrdersSection() {
                   </TableBody>
                 </Table>
               </div>
+              </>
             )}
             <p className="text-xs text-muted-foreground">
               {state.data.orders.length} commande(s) chargée(s){state.data.total !== null && state.data.total > state.data.orders.length ? ` sur ${state.data.total}` : ''}. La recherche et les filtres portent sur ces commandes.
@@ -361,7 +397,7 @@ export function OrdersSection() {
               </DialogHeader>
 
               <div className="space-y-5 text-sm">
-                <dl className="grid grid-cols-[7rem_1fr] gap-2">
+                <dl className="grid grid-cols-[5.5rem_1fr] gap-2 sm:grid-cols-[7rem_1fr]">
                   <dt className="text-muted-foreground">Statut</dt>
                   <dd className="font-medium">{statusLabel(selected.status)}</dd>
                   <dt className="text-muted-foreground">Paiement</dt>
@@ -432,12 +468,12 @@ export function OrdersSection() {
                   {nextStatuses(selected.mode, selected.status).length === 0 ? (
                     <p className="text-muted-foreground">Aucun changement de statut possible : la commande est dans un état final.</p>
                   ) : (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                       {nextStatuses(selected.mode, selected.status).map((status) => (
                         <Button
                           key={status}
                           type="button"
-                          size="sm"
+                          className="h-11 w-full whitespace-normal sm:h-9 sm:w-auto"
                           variant={status === 'cancelled' ? 'outline' : 'default'}
                           disabled={busy}
                           onClick={() => (status === 'cancelled' ? setConfirmCancel(selected) : void changeStatus(selected, status))}

@@ -8,8 +8,13 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PAYMENT_LABELS, STATUS_LABELS } from '@/components/admin/sections/orders-section';
 import { useAdminQuery } from '@/hooks/use-admin-query';
+import { fetchNewRequestCount, isCustomModuleMissing } from '@/lib/admin/custom-requests';
 import { fetchOrders, fetchOverview, fetchStock, type Metric } from '@/lib/admin/queries';
 import { formatPrice } from '@/lib/products';
+import { HIDE_CUSTOM_MODULE } from '@/lib/site';
+
+/** Module sur mesure masqué : aucune lecture de custom_requests. */
+const noCustomRequests = async () => 0;
 
 const countNote = 'Source : base Meritt Home.';
 
@@ -27,6 +32,7 @@ export function OverviewSection() {
   const { state } = useAdminQuery(load);
   const orders = useAdminQuery(fetchOrders);
   const stock = useAdminQuery(fetchStock);
+  const newRequests = useAdminQuery(HIDE_CUSTOM_MODULE ? noCustomRequests : fetchNewRequestCount);
   // fetchOverview ne lève pas d'erreur : chaque indicateur porte son propre état (valeur ou code d'erreur).
   const data = state.status === 'ready' ? state.data : null;
   const metric = (key: keyof NonNullable<typeof data>): Metric | null => (data ? data[key] : null);
@@ -50,7 +56,29 @@ export function OverviewSection() {
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Produits" metric={metric('products')} note={`${countNote} Tous statuts confondus.`} />
+        {!HIDE_CUSTOM_MODULE && (
+        <Link
+          href="/admin/sur-mesure"
+          className="rounded-lg border bg-card p-4 transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <p className="text-sm text-muted-foreground">Nouvelles demandes sur mesure</p>
+          {newRequests.state.status === 'loading' && <Skeleton className="mt-2 h-9 w-16" />}
+          {newRequests.state.status === 'error' && (
+            <p className="mt-1 text-sm text-muted-foreground">
+              {isCustomModuleMissing(newRequests.state.code)
+                ? 'Module non installé'
+                : `Indisponible${newRequests.state.code ? ` (code ${newRequests.state.code})` : ''}`}
+            </p>
+          )}
+          {newRequests.state.status === 'ready' && (
+            <>
+              <p className="mt-1 font-display text-3xl font-semibold">{newRequests.state.data}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Statut « Nouvelle demande ». Voir les demandes →</p>
+            </>
+          )}
+        </Link>
+        )}
+        <StatCard label="Produits"metric={metric('products')} note={`${countNote} Tous statuts confondus.`} />
         <StatCard label="Produits publiés" metric={metric('publishedProducts')} note={`${countNote} Visibles dans la boutique.`} />
         <StatCard label="Catégories" metric={metric('categories')} note={countNote} />
         <StatCard label="Catégories actives" metric={metric('activeCategories')} note={countNote} />

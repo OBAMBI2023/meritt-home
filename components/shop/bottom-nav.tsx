@@ -1,6 +1,8 @@
 'use client';
 
-import { Heart, Home, LayoutGrid, ShoppingBag } from 'lucide-react';
+import Link from 'next/link';
+import { Heart, Home, LayoutGrid, Ruler, ShoppingBag } from 'lucide-react';
+import { CUSTOM_PATH, HIDE_CUSTOM_MODULE } from '@/lib/site';
 import { cn } from '@/lib/utils';
 
 export type BottomNavItem = 'home' | 'catalogue' | 'favorites';
@@ -48,6 +50,12 @@ export function BottomNav({ active, cartCount, favoriteCount, onNavigate, onOpen
             {count > 0 && <span className="sr-only">, {count}</span>}
           </button>
         ))}
+        {!HIDE_CUSTOM_MODULE && (
+          <Link href={CUSTOM_PATH} className={cn(itemClass, 'text-muted-foreground')}>
+            <Ruler className="h-5 w-5" aria-hidden />
+            Sur mesure
+          </Link>
+        )}
         <button type="button" onClick={onOpenCart} className={cn(itemClass, 'text-muted-foreground')}>
           <span className="relative">
             <ShoppingBag className="h-5 w-5" aria-hidden />

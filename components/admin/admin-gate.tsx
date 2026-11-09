@@ -14,7 +14,7 @@ function FullScreenMessage({ children }: { children: ReactNode }) {
   return (
     <main className="flex min-h-screen items-center justify-center bg-muted/40 px-4 py-10">
       <div className="w-full max-w-md space-y-5 rounded-xl border bg-card p-6 text-center shadow-sm sm:p-8">
-        <BrandLogo className="justify-center" />
+        <BrandLogo className="mx-auto" />
         {children}
       </div>
     </main>

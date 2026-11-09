@@ -2,8 +2,14 @@ import './globals.css';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { SITE } from '@/lib/site';
+import { APPLE_STARTUP_IMAGES } from '@/lib/pwa-splash';
+import { SplashScreen } from '@/components/shop/splash-screen';
+import { SPLASH_SESSION_KEY } from '@/components/shop/splash-config';
 
 const sans = Inter({ subsets: ['latin'], display: 'swap', variable: '--font-sans' });
+
+// Exécuté avant le premier affichage : masque l'écran de lancement s'il a déjà été vu pendant cette session.
+const splashGuard = `try{if(sessionStorage.getItem('${SPLASH_SESSION_KEY}'))document.documentElement.classList.add('splash-seen')}catch(e){}`;
 
 const title = `${SITE.name} — ${SITE.tagline}`;
 
@@ -18,13 +24,21 @@ export const metadata: Metadata = {
     siteName: SITE.name,
     title,
     description: SITE.description,
-    images: [{ url: SITE.heroImage, alt: `Salon aménagé avec du mobilier ${SITE.name}` }],
+    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: `Logo ${SITE.name}` }],
+  },
+  manifest: '/manifest.webmanifest',
+  themeColor: '#F8F6F1',
+  appleWebApp: {
+    capable: true,
+    title: SITE.name,
+    statusBarStyle: 'default',
+    startupImage: APPLE_STARTUP_IMAGES,
   },
   twitter: {
     card: 'summary_large_image',
     title,
     description: SITE.description,
-    images: [SITE.heroImage],
+    images: ['/og-image.png'],
   },
 };
 
@@ -34,8 +48,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr" className={sans.variable}>
-      <body className="font-sans">{children}</body>
+    <html lang="fr" className={sans.variable} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: splashGuard }} />
+      </head>
+      <body className="font-sans">
+        <SplashScreen />
+        {children}
+      </body>
     </html>
   );
 }

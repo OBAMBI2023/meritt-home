@@ -44,3 +44,20 @@ export const PAYMENT_METHOD = {
 export function whatsappLink(message: string): string {
   return `https://wa.me/${SITE.whatsappNumber}?text=${encodeURIComponent(message)}`;
 }
+
+/** Module « Création sur mesure » : page, image de la bannière (remplaçable : voir CREDITS-IMAGES.md) et textes éditoriaux. */
+export const CUSTOM_PATH = '/sur-mesure';
+/** Masque tout accès au module (bannière, liens, tableau de bord admin) : posé par scripts/deployer-cloudflare-prod.ps1 tant que la migration n'est pas appliquée en production. */
+export const HIDE_CUSTOM_MODULE = process.env.NEXT_PUBLIC_HIDE_CUSTOM_MODULE === '1';
+export const CUSTOM_BANNER_IMAGE = '/sur-mesure.jpg';
+export const CUSTOM = {
+  name: 'Création sur mesure',
+  tagline: 'Vous avez l’inspiration, nous donnons vie à votre idée.',
+  subtitle:
+    'Partagez vos inspirations, vos envies et vos dimensions. Notre équipe étudie votre projet et vous accompagne dans sa réalisation.',
+  bannerTitle: 'UNE INSPIRATION. UN PROJET. UNE CRÉATION UNIQUE.',
+  bannerText:
+    'Vous avez enregistré une idée sur Pinterest ou découvert un meuble qui vous plaît ailleurs ? Envoyez-nous votre inspiration. Nous étudions votre projet et imaginons une création adaptée à vos envies, à votre espace et à votre budget.',
+  primaryButton: 'PERSONNALISER MON PROJET',
+  secondaryButton: 'DÉCOUVRIR LE SUR-MESURE',
+} as const;

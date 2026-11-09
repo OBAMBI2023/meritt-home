@@ -1,7 +1,10 @@
 'use client';
 
+import Link from 'next/link';
+import { Ruler } from 'lucide-react';
 import { CategoriesSkeleton } from '@/components/shop/catalogue-states';
 import { ProductImage } from '@/components/shop/product-image';
+import { CUSTOM, CUSTOM_BANNER_IMAGE, CUSTOM_PATH } from '@/lib/site';
 import { categoryImage, countByCategory, type Category, type Product } from '@/lib/products';
 
 interface CategoriesSectionProps {
@@ -57,6 +60,23 @@ export function CategoriesSection({ loading, categories, products, onSelect }: C
                 </li>
               );
             })}
+            <li className="w-[150px] shrink-0 sm:w-auto">
+              <Link href={CUSTOM_PATH} className="group relative block aspect-[3/4] w-full overflow-hidden rounded-[22px] text-left">
+                <ProductImage
+                  src={CUSTOM_BANNER_IMAGE}
+                  alt=""
+                  sizes="(min-width: 1024px) 20vw, 50vw"
+                  className="transition-transform duration-500 group-hover:scale-105 motion-reduce:transition-none"
+                />
+                <span className="absolute inset-x-0 bottom-0 flex flex-col bg-gradient-to-t from-black/70 to-transparent px-[18px] pb-[18px] pt-10 text-white">
+                  <span className="inline-flex items-center gap-1.5 font-bold">
+                    <Ruler className="h-4 w-4" aria-hidden />
+                    {CUSTOM.name}
+                  </span>
+                  <span className="text-xs opacity-85">Votre idée, notre savoir-faire</span>
+                </span>
+              </Link>
+            </li>
           </ul>
         )}
       </div>

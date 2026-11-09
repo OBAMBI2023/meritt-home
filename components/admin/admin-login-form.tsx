@@ -43,7 +43,7 @@ export function AdminLoginForm() {
     <main className="flex min-h-screen items-center justify-center bg-muted/40 px-4 py-10">
       <div className="w-full max-w-md space-y-6 rounded-xl border bg-card p-6 shadow-sm sm:p-8">
         <div className="space-y-3 text-center">
-          <BrandLogo className="justify-center" />
+          <BrandLogo className="mx-auto" />
           <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-accent text-primary">
             <Lock className="h-5 w-5" aria-hidden />
           </div>
